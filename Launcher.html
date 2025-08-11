@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edabeast Games</title>
+  <link rel="icon" type="image/png" href="Games/Favicons/Launcher.png" sizes="16x16" />
+  <style>
+    :root {
+      --bg-color-light: #f8f9fa;
+      --text-color-light: #222;
+      --card-bg-light: #ffffff;
+      --accent-light: #007bff;
+
+      --bg-color-dark: #121212;
+      --text-color-dark: #e0e0e0;
+      --card-bg-dark: #1e1e1e;
+      --accent-dark: #5c8aff;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      transition: background 0.3s, color 0.3s;
+      min-height: 100vh;
+    }
+
+    body.light-mode {
+      background: var(--bg-color-light);
+      color: var(--text-color-light);
+    }
+
+    body.dark-mode {
+      background: var(--bg-color-dark);
+      color: var(--text-color-dark);
+    }
+
+    body.small-font {
+      font-size: 14px;
+    }
+
+    body.medium-font {
+      font-size: 16px;
+    }
+
+    body.large-font {
+      font-size: 18px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    header {
+      text-align: center;
+      padding: 60px 0 40px;
+      background: transparent;
+      margin-bottom: 40px;
+      border-bottom: 2px solid var(--accent-dark);
+    }
+
+    header h1 {
+      font-size: 3em;
+      margin: 0;
+      color: inherit;
+    }
+
+    .settings-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: transparent;
+      color: inherit;
+      border: 2px solid currentColor;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 70px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #000;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 1000;
+    }
+
+    body.dark-mode .settings-panel {
+      background: #222;
+      color: #e0e0e0;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 10px 0;
+    }
+
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ccc;
+    }
+
+    .tab-button {
+      background: none;
+      border: none;
+      padding: 12px 20px;
+      cursor: pointer;
+      font-weight: bold;
+      color: inherit;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+
+    .tab-button.active {
+      border-bottom: 3px solid var(--accent-dark);
+      color: var(--accent-dark);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .game-grid a.game-item {
+      display: block;
+      text-align: center;
+      padding: 15px;
+      border-radius: 10px;
+      background: var(--card-bg-dark);
+      color: inherit;
+      text-decoration: none;
+      font-weight: bold;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .game-grid a.game-item:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    body.light-mode .game-grid a.game-item {
+      background: var(--card-bg-light);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    #betas-content {
+      background: linear-gradient(45deg, #5c8aff, #a0e6ff);
+      color: #0d1a25;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    #betas-content p {
+      color: #1a2c3b;
+    }
+
+    .beta-game-link {
+      display: inline-block;
+      background-color: #1a2c3b;
+      color: #a0e6ff;
+      padding: 18px 35px;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: bold;
+      margin-top: 15px;
+      border: 1px solid #1a2c3b;
+    }
+
+    .beta-game-link:hover {
+      background-color: #0d1a25;
+      color: #5c8aff;
+      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(92, 138, 255, 0.7);
+      border-color: #5c8aff;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      margin-top: 60px;
+      color: #888;
+      font-size: 0.9em;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    select {
+      padding: 5px;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+  </style>
+</head>
+<body class="light-mode medium-font">
+
+  <button class="settings-button" onclick="toggleSettings()">⚙ Settings</button>
+
+  <div class="settings-panel" id="settingsPanel">
+    <p><strong>Settings</strong></p>
+    <div class="toggle-switch">
+      <label for="darkToggle">Dark Mode</label>
+      <input type="checkbox" id="darkToggle" />
+    </div>
+    <div class="toggle-switch">
+      <label for="fontSizeSelect">Font Size</label>
+      <select id="fontSizeSelect">
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+      </select>
+    </div>
+  </div>
+
+  <header>
+    <h1>Edabeast Games</h1>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab-button active" data-tab="games">Games</button>
+      <button class="tab-button" data-tab="betas">Betas</button>
+    </div>
+
+    <div id="games-content" class="tab-content active">
+      <div class="game-grid">
+        <a class="game-item" href="Games/Tetris.html" target="_blank">Tetris</a>
+        <a class="game-item" href="Games/Snake.html" target="_blank">Snake</a>
+        <a class="game-item" href="Games/Tic-tac-toe.html" target="_blank">Tic-tac-toe</a>
+        <a class="game-item" href="Games/Sudoku.html" target="_blank">Sudoku</a>
+        <a class="game-item" href="Games/Minesweeper.html" target="_blank">Minesweeper</a>
+        <a class="game-item" href="Games/2048/2048.html" target="_blank">2048</a>
+        <a class="game-item" href="Games/Flappy.html" target="_blank">Flappy Bird</a>
+      </div>
+    </div>
+
+    <div id="betas-content" class="tab-content">
+      <p>Some of our games in the beta phase</p>
+      <div class="beta-game-link"><a href="Games/NewYorkTrail.html" target="_blank">New York Trail</a></div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2025 Edabeast Games. <a href="https://meet-oddly-tarpon.ngrok-free.app" target="_blank">Our Official Site</a>
+  </footer>
+
+  <script>
+    function toggleSettings() {
+      const panel = document.getElementById("settingsPanel");
+      panel.style.display = panel.style.display === "block" ? "none" : "block";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const tabButtons = document.querySelectorAll(".tab-button");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const targetTab = button.dataset.tab;
+
+          tabButtons.forEach((btn) => btn.classList.remove("active"));
+          tabContents.forEach((content) => content.classList.remove("active"));
+
+          document.getElementById(`${targetTab}-content`).classList.add("active");
+          button.classList.add("active");
+        });
+      });
+
+      const darkToggle = document.getElementById("darkToggle");
+      const storedMode = localStorage.getItem("theme") || "light";
+      document.body.classList.remove("dark-mode", "light-mode");
+      document.body.classList.add(`${storedMode}-mode`);
+      darkToggle.checked = storedMode === "dark";
+
+      darkToggle.addEventListener("change", () => {
+        const mode = darkToggle.checked ? "dark" : "light";
+        document.body.classList.remove("dark-mode", "light-mode");
+        document.body.classList.add(`${mode}-mode`);
+        localStorage.setItem("theme", mode);
+      });
+
+      const fontSizeSelect = document.getElementById('fontSizeSelect');
+      const storedFontSize = localStorage.getItem('fontSize') || 'medium';
+      applyFontSize(storedFontSize);
+      fontSizeSelect.value = storedFontSize;
+
+      fontSizeSelect.addEventListener('change', () => {
+        applyFontSize(fontSizeSelect.value);
+      });
+    });
+
+    function applyFontSize(size) {
+      document.body.classList.remove("small-font", "medium-font", "large-font");
+      document.body.classList.add(`${size}-font`);
+      localStorage.setItem("fontSize", size);
+    }
+  </script>
+</body>
+</html>
