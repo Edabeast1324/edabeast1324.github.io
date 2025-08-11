@@ -113,10 +113,16 @@
   hitboxCanvas.width = window.innerWidth;
   hitboxCanvas.height = window.innerHeight;
 
+  // Game sounds
   const flapSound = new Audio('Flap.mp3');
   const pointSound = new Audio('point.mp3');
   const hitSound = new Audio('Hit.mp3');
   const dieSound = new Audio('Die.mp3');
+
+  // Background music
+  const bgMusic = new Audio('flappy.mp3');
+  bgMusic.loop = true;
+  bgMusic.volume = 0.5;
 
   function createPipeSet(gapPosition) {
     const container = document.createElement('div');
@@ -315,6 +321,8 @@
     gameRunning = false;
     gameOverScreen.style.display = 'flex';
     clearInterval(pipeSpawner);
+
+    bgMusic.pause(); // stop background music
   }
 
   function startGame() {
@@ -322,6 +330,9 @@
     gameStarted = true;
     gameRunning = true;
     gameOverScreen.style.display = 'none';
+
+    bgMusic.currentTime = 0;
+    bgMusic.play().catch(() => {}); // start music
 
     if (pipeSpawner) clearInterval(pipeSpawner);
     pipeSpawner = setInterval(spawnPipe, spawnInterval);
@@ -387,5 +398,4 @@
 
 </body>
 </html>
-
 
