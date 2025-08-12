@@ -220,6 +220,7 @@ function update(dt){
   function ghostAtTile(r, c, self) {
     return state.ghosts.find(g =>
       g !== self &&
+      !g.eaten && // Ignore eaten ghosts!
       Math.abs((g.x ?? (g.c * TILE + TILE/2)) - ((c + 0.5) * TILE)) < 2 &&
       Math.abs((g.y ?? (g.r * TILE + TILE/2)) - ((r + 0.5) * TILE)) < 2
     );
@@ -243,32 +244,62 @@ function update(dt){
       ghost.x = centerX;
       ghost.y = centerY;
 
-      let possible = [];
-      for (let d = 1; d <= 4; d++) {
-        if (d === opposite(ghost.dir)) continue;
-        let [dr, dc] = DIRS[d];
-        let nr = gr + dr, nc = gc + dc;
-        if (!isWall(nr, nc, state.map) && !ghostAtTile(nr, nc, ghost)) possible.push(d);
+      // BFS pathfinding to Pac-Man (or away if in power mode)
+      function bfs(startR, startC, targetR, targetC, flee) {
+        let queue = [[startR, startC, []]];
+        let visited = Array.from({length: ROWS}, () => Array(COLS).fill(false));
+        visited[startR][startC] = true;
+        let best = null, bestDist = flee ? -1 : 9999, bestPath = [];
+        while (queue.length) {
+          let [r, c, path] = queue.shift();
+          let dist = Math.abs(r - targetR) + Math.abs(c - targetC);
+          if (!flee && r === targetR && c === targetC) {
+            return path;
+          }
+          if (flee && dist > bestDist) {
+            bestDist = dist;
+            best = [r, c];
+            bestPath = path;
+          }
+          for (let d = 1; d <= 4; d++) {
+            if (path.length === 0 && d === opposite(ghost.dir)) continue;
+            let [dr, dc] = DIRS[d];
+            let nr = r + dr, nc = c + dc;
+            if (nr < 0 || nc < 0 || nr >= ROWS || nc >= COLS) continue;
+            if (isWall(nr, nc, state.map)) continue;
+            if (visited[nr][nc]) continue;
+            if (ghostAtTile(nr, nc, ghost)) continue;
+            visited[nr][nc] = true;
+            queue.push([nr, nc, path.concat([d])]);
+          }
+        }
+        return flee ? bestPath : [];
       }
-      if (possible.length === 0) {
+
+      const pacR = Math.floor(state.pac.y / TILE);
+      const pacC = Math.floor(state.pac.x / TILE);
+
+      let path;
+      if (state.powerMode > 0) {
+        // Flee: find the path that maximizes distance from Pac-Man
+        path = bfs(gr, gc, pacR, pacC, true);
+      } else {
+        // Chase: find shortest path to Pac-Man
+        path = bfs(gr, gc, pacR, pacC, false);
+      }
+
+      if (path && path.length > 0) {
+        ghost.dir = path[0];
+      } else {
+        // fallback: random or reverse
+        let possible = [];
         for (let d = 1; d <= 4; d++) {
+          if (d === opposite(ghost.dir)) continue;
           let [dr, dc] = DIRS[d];
           let nr = gr + dr, nc = gc + dc;
           if (!isWall(nr, nc, state.map) && !ghostAtTile(nr, nc, ghost)) possible.push(d);
         }
-      }
-      if (possible.length === 0) {
-        for (let d = 1; d <= 4; d++) {
-          if (d === ghost.dir) continue;
-          let [dr, dc] = DIRS[d];
-          let nr = gr + dr, nc = gc + dc;
-          if (!isWall(nr, nc, state.map)) possible.push(d);
-        }
-      }
-      if (possible.length > 0) {
-        ghost.dir = possible[Math.floor(Math.random() * possible.length)];
-      } else {
-        ghost.dir = opposite(ghost.dir) || 2;
+        ghost.dir = possible.length ? possible[Math.floor(Math.random() * possible.length)] : opposite(ghost.dir) || 2;
       }
     }
 
@@ -445,6 +476,3 @@ function roundRect(ctx,x,y,w,h,r){
 </script>
 </body>
 </html>
-
-
-
