@@ -147,17 +147,23 @@ function renderGames(list, containerId) {
     card.className = "game-card";
     card.innerHTML = `
       <button class="favorite-btn">${favorites.includes(game.title) ? "❤️" : "🤍"}</button>
-      <img src="${game.img}" alt="${game.title}" class="game-image">
-      <div class="game-info">
-        <div class="game-title">${game.title}</div>
-        <div class="game-desc">${game.desc}</div>
-        <a href="${game.link}" target="_blank">Play</a>
-      </div>
+      <a href="${game.link}" target="_blank" class="game-link" style="text-decoration:none; color:inherit; display:block;">
+        <img src="${game.img}" alt="${game.title}" class="game-image">
+        <div class="game-info">
+          <div class="game-title">${game.title}</div>
+          <div class="game-desc">${game.desc}</div>
+        </div>
+      </a>
     `;
-    card.querySelector(".favorite-btn").addEventListener("click", () => toggleFavorite(game.title));
+    card.querySelector(".favorite-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleFavorite(game.title);
+    });
     container.appendChild(card);
   });
 }
+
 
 function toggleFavorite(title) {
   if (favorites.includes(title)) {
