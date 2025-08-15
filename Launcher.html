@@ -36,17 +36,9 @@
       color: var(--text-color-dark);
     }
 
-    body.small-font {
-      font-size: 14px;
-    }
-
-    body.medium-font {
-      font-size: 16px;
-    }
-
-    body.large-font {
-      font-size: 18px;
-    }
+    body.small-font { font-size: 14px; }
+    body.medium-font { font-size: 16px; }
+    body.large-font { font-size: 18px; }
 
     .container {
       max-width: 1200px;
@@ -128,13 +120,8 @@
       color: var(--accent-dark);
     }
 
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     .game-grid {
       display: grid;
@@ -172,10 +159,6 @@
       padding: 20px;
     }
 
-    #betas-content p {
-      color: #1a2c3b;
-    }
-
     .beta-game-link {
       display: inline-block;
       background-color: #1a2c3b;
@@ -186,13 +169,6 @@
       font-weight: bold;
       margin-top: 15px;
       border: 1px solid #1a2c3b;
-    }
-
-    .beta-game-link:hover {
-      background-color: #0d1a25;
-      color: #5c8aff;
-      box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5), 0 0 15px rgba(92, 138, 255, 0.7);
-      border-color: #5c8aff;
     }
 
     footer {
@@ -208,6 +184,22 @@
       padding: 5px;
       border-radius: 4px;
       font-size: 1em;
+    }
+
+    /* Heart styling */
+    .favorite-btn {
+      font-size: 1.2em;
+      cursor: pointer;
+      margin-left: 8px;
+      color: gray;
+      user-select: none;
+    }
+    .favorite-btn.filled { color: red; }
+    .game-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
     }
   </style>
 </head>
@@ -243,29 +235,59 @@
       <button class="tab-button" data-tab="music">Music</button>
     </div>
 
+    <!-- Games -->
     <div id="games-content" class="tab-content active">
       <div class="game-grid">
-        <a class="game-item" href="Tetris.html" target="_blank">Tetris</a>
-        <a class="game-item" href="Snake.html" target="_blank">Snake</a>
-        <a class="game-item" href="Tic-tac-toe.html" target="_blank">Tic-tac-toe</a>
-        <a class="game-item" href="Sudoku.html" target="_blank">Sudoku</a>
-        <a class="game-item" href="Minesweeper.html" target="_blank">Minesweeper</a>
-        <a class="game-item" href="Flappy.html" target="_blank">Flappy Bird</a>
-        <a class="game-item" href="pac.html" target="_blank">Pac-Man</a>
+        <div class="game-card">
+          <a class="game-item" href="Tetris.html" target="_blank">Tetris</a>
+          <span class="favorite-btn" data-game="Tetris" data-link="Tetris.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="Snake.html" target="_blank">Snake</a>
+          <span class="favorite-btn" data-game="Snake" data-link="Snake.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="Tic-tac-toe.html" target="_blank">Tic-tac-toe</a>
+          <span class="favorite-btn" data-game="Tic-tac-toe" data-link="Tic-tac-toe.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="Sudoku.html" target="_blank">Sudoku</a>
+          <span class="favorite-btn" data-game="Sudoku" data-link="Sudoku.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="Minesweeper.html" target="_blank">Minesweeper</a>
+          <span class="favorite-btn" data-game="Minesweeper" data-link="Minesweeper.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="Flappy.html" target="_blank">Flappy Bird</a>
+          <span class="favorite-btn" data-game="Flappy Bird" data-link="Flappy.html">♡</span>
+        </div>
+        <div class="game-card">
+          <a class="game-item" href="pac.html" target="_blank">Pac-Man</a>
+          <span class="favorite-btn" data-game="Pac-Man" data-link="pac.html">♡</span>
+        </div>
       </div>
     </div>
 
+    <!-- Betas -->
     <div id="betas-content" class="tab-content">
       <p>Some of our games in the beta phase</p>
-      <a class="game-item" href="NewYorkTrail.html" target="_blank">New York Trail</a>
+      <div class="game-card">
+        <a class="game-item" href="NewYorkTrail.html" target="_blank">New York Trail</a>
+        <span class="favorite-btn" data-game="New York Trail" data-link="NewYorkTrail.html">♡</span>
+      </div>
     </div>
 
+    <!-- Music -->
     <div id="music-content" class="tab-content">
       <p>Background Music Soundtrack</p>
     </div>
 
+    <!-- Favorites -->
     <div id="favorites-content" class="tab-content">
-      <p>Your Favorites Appear Here!</p>
+      <div class="game-grid" id="favorites-grid">
+        <p>No favorites yet!</p>
+      </div>
     </div>
   </div>
 
@@ -286,10 +308,8 @@
       tabButtons.forEach((button) => {
         button.addEventListener("click", () => {
           const targetTab = button.dataset.tab;
-
           tabButtons.forEach((btn) => btn.classList.remove("active"));
           tabContents.forEach((content) => content.classList.remove("active"));
-
           document.getElementById(`${targetTab}-content`).classList.add("active");
           button.classList.add("active");
         });
@@ -316,6 +336,61 @@
       fontSizeSelect.addEventListener('change', () => {
         applyFontSize(fontSizeSelect.value);
       });
+
+      // Favorites system
+      const favGrid = document.getElementById("favorites-grid");
+      let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+      function renderFavorites() {
+        favGrid.innerHTML = "";
+        if (favorites.length === 0) {
+          favGrid.innerHTML = "<p>No favorites yet!</p>";
+          return;
+        }
+        favorites.forEach(fav => {
+          const div = document.createElement("div");
+          div.classList.add("game-card");
+          div.innerHTML = `
+            <a class="game-item" href="${fav.link}" target="_blank">${fav.name}</a>
+            <span class="favorite-btn filled" data-game="${fav.name}" data-link="${fav.link}">♥</span>
+          `;
+          favGrid.appendChild(div);
+        });
+      }
+
+      function updateHearts() {
+        document.querySelectorAll(".favorite-btn").forEach(btn => {
+          const name = btn.dataset.game;
+          if (favorites.some(f => f.name === name)) {
+            btn.classList.add("filled");
+            btn.textContent = "♥";
+          } else {
+            btn.classList.remove("filled");
+            btn.textContent = "♡";
+          }
+        });
+      }
+
+      function toggleFavorite(name, link) {
+        const index = favorites.findIndex(f => f.name === name);
+        if (index > -1) {
+          favorites.splice(index, 1);
+        } else {
+          favorites.push({ name, link });
+        }
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+        updateHearts();
+        renderFavorites();
+      }
+
+      document.body.addEventListener("click", e => {
+        if (e.target.classList.contains("favorite-btn")) {
+          toggleFavorite(e.target.dataset.game, e.target.dataset.link);
+        }
+      });
+
+      updateHearts();
+      renderFavorites();
     });
 
     function applyFontSize(size) {
