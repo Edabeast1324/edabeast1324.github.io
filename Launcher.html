@@ -1,153 +1,208 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Edabeast Games</title>
-  <link rel="icon" type="image/png" href="Launcher.png" sizes="16x16" />
-  <style>
-    :root {
-      --bg-color-light: #f8f9fa;
-      --text-color-light: #222;
-      --card-bg-light: #ffffff;
-      --accent-light: #007bff;
-      --bg-color-dark: #121212;
-      --text-color-dark: #e0e0e0;
-      --card-bg-dark: #1e1e1e;
-      --accent-dark: #5c8aff;
-    }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      transition: background 0.3s, color 0.3s;
-    }
-    body.light-mode { background: var(--bg-color-light); color: var(--text-color-light); }
-    body.dark-mode { background: var(--bg-color-dark); color: var(--text-color-dark); }
-    body.small-font { font-size: 14px; }
-    body.medium-font { font-size: 16px; }
-    body.large-font { font-size: 18px; }
-    header { text-align: center; padding: 40px 0 20px; border-bottom: 2px solid var(--accent-dark); }
-    header h1 { font-size: 3em; margin: 0; }
-    .settings-button {
-      position: absolute; top: 20px; left: 20px;
-      background: transparent; color: inherit;
-      border: 2px solid currentColor; padding: 8px 12px;
-      border-radius: 6px; cursor: pointer; font-weight: bold;
-    }
-    .settings-panel {
-      position: fixed; top: 70px; left: 20px;
-      background: rgba(255, 255, 255, 0.9); color: #000;
-      padding: 20px; border-radius: 10px; display: none;
-      z-index: 1000;
-    }
-    body.dark-mode .settings-panel { background: #222; color: #e0e0e0; }
-    .tabs { display: flex; margin-bottom: 20px; border-bottom: 2px solid #ccc; }
-    .tab-button {
-      background: none; border: none; padding: 12px 20px;
-      cursor: pointer; font-weight: bold; color: inherit;
-      border-bottom: 3px solid transparent;
-    }
-    .tab-button.active {
-      border-bottom: 3px solid var(--accent-dark);
-      color: var(--accent-dark);
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .game-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-    .game-card {
-      background: var(--card-bg-dark);
-      border-radius: 10px; overflow: hidden; text-align: center;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      transition: transform 0.3s, box-shadow 0.3s;
-      position: relative;
-    }
-    body.light-mode .game-card { background: var(--card-bg-light); }
-    .game-card:hover { transform: translateY(-6px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
-    .game-image {
-      width: 100%; height: 150px; object-fit: cover;
-    }
-    .game-info { padding: 10px; }
-    .game-title { font-size: 1.2em; font-weight: bold; margin: 5px 0; }
-    .game-desc { font-size: 0.9em; color: inherit; opacity: 0.8; }
-    .favorite-btn {
-      position: absolute; top: 10px; right: 10px;
-      background: none; border: none; cursor: pointer;
-      font-size: 1.5em; color: red;
-    }
-    footer { text-align: center; padding: 30px 0; margin-top: 60px; color: #888; font-size: 0.9em; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edabeast Games</title>
+<style>
+  :root {
+    --bg-color: #222;
+    --text-color: white;
+  }
+  body {
+    font-family: Arial, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    transition: background 0.3s, color 0.3s;
+  }
+  header {
+    padding: 15px;
+    text-align: center;
+    font-size: 2em;
+    font-weight: bold;
+    background: #333;
+    color: white;
+  }
+  .tabs {
+    display: flex;
+    background: #333;
+    padding: 10px;
+    gap: 10px;
+  }
+  .tab {
+    cursor: pointer;
+    padding: 8px 12px;
+    background: #444;
+    border-radius: 6px;
+  }
+  .tab.active {
+    background: #666;
+  }
+  .tab-content {
+    display: none;
+    padding: 20px;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+  }
+  .game-card {
+    position: relative;
+    background: #333;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s;
+  }
+  .game-card:hover {
+    transform: scale(1.03);
+  }
+  .game-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .game-image {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+  }
+  .game-info {
+    padding: 10px;
+  }
+  .game-title {
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+  .game-desc {
+    font-size: 0.9em;
+    color: #ccc;
+  }
+  .favorite-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .favorite-btn svg {
+    pointer-events: none;
+  }
+  .settings-option {
+    margin-bottom: 15px;
+  }
+</style>
 </head>
-<body class="light-mode medium-font">
+<body>
 
-<button class="settings-button" onclick="toggleSettings()">⚙ Settings</button>
-<div class="settings-panel" id="settingsPanel">
-  <p><strong>Settings</strong></p>
-  <label><input type="checkbox" id="darkToggle" /> Dark Mode</label><br>
-  <label>Font Size
-    <select id="fontSizeSelect">
-      <option value="small">Small</option>
-      <option value="medium" selected>Medium</option>
-      <option value="large">Large</option>
+<header>Edabeast Games</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="games">Games</div>
+  <div class="tab" data-tab="betas">Betas</div>
+  <div class="tab" data-tab="favorites">Favorites</div>
+  <div class="tab" data-tab="settings">Settings</div>
+</div>
+
+<div id="games" class="tab-content active">
+  <div class="game-grid" id="games-grid"></div>
+</div>
+<div id="betas" class="tab-content">
+  <div class="game-grid" id="betas-grid"></div>
+</div>
+<div id="favorites" class="tab-content">
+  <div class="game-grid" id="favorites-grid"><p>No favorites yet!</p></div>
+</div>
+<div id="settings" class="tab-content">
+  <div class="settings-option">
+    <label>Font: </label>
+    <select id="font-select">
+      <option value="Arial, sans-serif">Arial</option>
+      <option value="'Courier New', monospace">Courier New</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="Verdana, sans-serif">Verdana</option>
     </select>
-  </label>
-</div>
-
-<header><h1>Edabeast Games</h1></header>
-
-<div class="container">
-  <div class="tabs">
-    <button class="tab-button active" data-tab="games">Games</button>
-    <button class="tab-button" data-tab="betas">Betas</button>
-    <button class="tab-button" data-tab="favorites">Favorites</button>
-    <button class="tab-button" data-tab="music">Music</button>
   </div>
-
-  <div id="games-content" class="tab-content active">
-    <div class="game-grid" id="games-grid"></div>
+  <div class="settings-option">
+    <label>Text Color: </label>
+    <input type="color" id="text-color">
   </div>
-
-  <div id="betas-content" class="tab-content">
-    <div class="game-grid" id="betas-grid"></div>
+  <div class="settings-option">
+    <label>Background Color: </label>
+    <input type="color" id="bg-color">
   </div>
-
-  <div id="favorites-content" class="tab-content">
-    <div class="game-grid" id="favorites-grid"></div>
+  <div class="settings-option">
+    <label>Background Style: </label>
+    <select id="bg-style">
+      <option value="solid">Solid</option>
+      <option value="gradient">Gradient</option>
+      <option value="image">Image</option>
+    </select>
   </div>
-
-  <div id="music-content" class="tab-content">
-    <p>Background Music Soundtrack</p>
+  <div class="settings-option">
+    <label>Dark/Light Mode: </label>
+    <select id="mode-select">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
   </div>
 </div>
-
-<footer>&copy; 2025 Edabeast Games.</footer>
 
 <script>
-const games = [
-  { title: "Tetris", img: "tetris.png", desc: "Classic block-stacking puzzle.", link: "Tetris.html" },
-  { title: "Snake", img: "snake.png", desc: "Eat apples and grow the snake.", link: "Snake.html" },
-  { title: "Tic-tac-toe", img: "tictactoe.png", desc: "Get three in a row to win.", link: "Tic-tac-toe.html" },
-  { title: "Sudoku", img: "sudoku.png", desc: "Fill the grid with numbers 1-9.", link: "Sudoku.html" },
-  { title: "Minesweeper", img: "minesweeper.png", desc: "Find the mines without exploding.", link: "Minesweeper.html" },
-  { title: "Flappy Bird", img: "flappy.png", desc: "Fly through pipes and survive.", link: "Flappy.html" },
-  { title: "Pac-Man", img: "pacman.png", desc: "Eat dots and avoid ghosts.", link: "pac.html" }
+const gamesList = [
+  { title: "Tetris", desc: "Arrange the blocks to clear lines.", img: "tetris.jpg", link: "Tetris.html" },
+  { title: "Snake", desc: "Eat apples, grow longer, avoid yourself.", img: "snake.jpg", link: "Snake.html" },
+  { title: "Tic-tac-toe", desc: "Classic Xs and Os battle.", img: "tic.jpg", link: "Tic-tac-toe.html" },
+  { title: "Sudoku", desc: "Fill the grid with 1–9 without repeats.", img: "sudoku.jpg", link: "Sudoku.html" },
+  { title: "Minesweeper", desc: "Avoid the mines, reveal safe spots.", img: "minesweeper.jpg", link: "Minesweeper.html" },
+  { title: "Flappy Bird", desc: "Tap to fly, avoid pipes.", img: "flappy.jpg", link: "Flappy.html" },
+  { title: "Pac-Man", desc: "Eat pellets, avoid ghosts.", img: "pac.jpg", link: "pac.html" }
 ];
-const betas = [
-  { title: "New York Trail", img: "nytrail.png", desc: "Adventure through New York.", link: "NewYorkTrail.html" }
+const betasList = [
+  { title: "New York Trail", desc: "A journey through the city.", img: "nytrail.jpg", link: "NewYorkTrail.html" }
 ];
-let favorites = JSON.parse(localStorage.getItem("favorites")) || [];
+let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+function filledHeartSVG() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="red" viewBox="0 0 24 24">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+    2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+    C13.09 3.81 14.76 3 16.5 3
+    19.58 3 22 5.42 22 8.5
+    c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>`;
+}
+function outlineHeartSVG() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="red" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M12.1 21.35l-1.1-1.05C5.14 15.24 2 12.39 2 8.5
+    2 5.42 4.42 3 7.5 3
+    c1.74 0 3.41.81 4.5 2.09
+    C13.09 3.81 14.76 3 16.5 3
+    19.58 3 22 5.42 22 8.5
+    c0 3.89-3.14 6.74-8.9 11.8l-1 1.05z"/>
+  </svg>`;
+}
 
 function renderGames(list, containerId) {
   const container = document.getElementById(containerId);
   container.innerHTML = "";
   list.forEach(game => {
+    const isFav = favorites.includes(game.title);
     const card = document.createElement("div");
     card.className = "game-card";
     card.innerHTML = `
-      <button class="favorite-btn">${favorites.includes(game.title) ? "❤️" : "🤍"}</button>
-      <a href="${game.link}" target="_blank" class="game-link" style="text-decoration:none; color:inherit; display:block;">
+      <button class="favorite-btn ${isFav ? "fav" : ""}" title="Toggle Favorite">
+        ${isFav ? filledHeartSVG() : outlineHeartSVG()}
+      </button>
+      <a href="${game.link}" target="_blank" class="game-link">
         <img src="${game.img}" alt="${game.title}" class="game-image">
         <div class="game-info">
           <div class="game-title">${game.title}</div>
@@ -155,69 +210,127 @@ function renderGames(list, containerId) {
         </div>
       </a>
     `;
-    card.querySelector(".favorite-btn").addEventListener("click", (e) => {
+    const favBtn = card.querySelector(".favorite-btn");
+    favBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
-      toggleFavorite(game.title);
+      toggleFavorite(game.title, game.link, game.img, game.desc, favBtn);
     });
     container.appendChild(card);
   });
 }
 
-
-function toggleFavorite(title) {
-  if (favorites.includes(title)) {
-    favorites = favorites.filter(f => f !== title);
-  } else {
+function toggleFavorite(title, link, img, desc, btn) {
+  const index = favorites.indexOf(title);
+  if (index === -1) {
     favorites.push(title);
+    btn.innerHTML = filledHeartSVG();
+    btn.classList.add("fav");
+  } else {
+    favorites.splice(index, 1);
+    btn.innerHTML = outlineHeartSVG();
+    btn.classList.remove("fav");
   }
   localStorage.setItem("favorites", JSON.stringify(favorites));
-  renderAll();
+  renderFavoritesTab();
 }
 
-function renderAll() {
-  renderGames(games, "games-grid");
-  renderGames(betas, "betas-grid");
-  renderGames([...games, ...betas].filter(g => favorites.includes(g.title)), "favorites-grid");
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  renderAll();
-  document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach(tc => tc.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(`${btn.dataset.tab}-content`).classList.add("active");
+function renderFavoritesTab() {
+  const favGrid = document.getElementById("favorites-grid");
+  favGrid.innerHTML = "";
+  if (favorites.length === 0) {
+    favGrid.innerHTML = "<p>No favorites yet!</p>";
+    return;
+  }
+  const favGames = [...gamesList, ...betasList].filter(g => favorites.includes(g.title));
+  favGames.forEach(game => {
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.innerHTML = `
+      <button class="favorite-btn fav" title="Toggle Favorite">${filledHeartSVG()}</button>
+      <a href="${game.link}" target="_blank" class="game-link">
+        <img src="${game.img}" alt="${game.title}" class="game-image">
+        <div class="game-info">
+          <div class="game-title">${game.title}</div>
+          <div class="game-desc">${game.desc}</div>
+        </div>
+      </a>
+    `;
+    const favBtn = card.querySelector(".favorite-btn");
+    favBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleFavorite(game.title, game.link, game.img, game.desc, favBtn);
     });
+    favGrid.appendChild(card);
   });
-  const darkToggle = document.getElementById("darkToggle");
-  const storedMode = localStorage.getItem("theme") || "light";
-  document.body.classList.add(`${storedMode}-mode`);
-  darkToggle.checked = storedMode === "dark";
-  darkToggle.addEventListener("change", () => {
-    const mode = darkToggle.checked ? "dark" : "light";
-    document.body.classList.remove("dark-mode", "light-mode");
-    document.body.classList.add(`${mode}-mode`);
-    localStorage.setItem("theme", mode);
-  });
-  const fontSizeSelect = document.getElementById('fontSizeSelect');
-  const storedFontSize = localStorage.getItem('fontSize') || 'medium';
-  applyFontSize(storedFontSize);
-  fontSizeSelect.value = storedFontSize;
-  fontSizeSelect.addEventListener('change', () => applyFontSize(fontSizeSelect.value));
+}
+
+// Theme Settings
+const fontSelect = document.getElementById("font-select");
+const textColorInput = document.getElementById("text-color");
+const bgColorInput = document.getElementById("bg-color");
+const bgStyleSelect = document.getElementById("bg-style");
+const modeSelect = document.getElementById("mode-select");
+
+function applySettings() {
+  document.body.style.fontFamily = fontSelect.value;
+  document.documentElement.style.setProperty('--text-color', textColorInput.value);
+  document.documentElement.style.setProperty('--bg-color', bgColorInput.value);
+
+  if (bgStyleSelect.value === "gradient") {
+    document.body.style.background = `linear-gradient(${bgColorInput.value}, #000)`;
+  } else if (bgStyleSelect.value === "image") {
+    document.body.style.background = `url('background.jpg') center/cover no-repeat`;
+  } else {
+    document.body.style.background = bgColorInput.value;
+  }
+
+  if (modeSelect.value === "light") {
+    document.documentElement.style.setProperty('--bg-color', "#fff");
+    document.documentElement.style.setProperty('--text-color', "#000");
+  }
+  saveSettings();
+}
+
+function saveSettings() {
+  const settings = {
+    font: fontSelect.value,
+    textColor: textColorInput.value,
+    bgColor: bgColorInput.value,
+    bgStyle: bgStyleSelect.value,
+    mode: modeSelect.value
+  };
+  localStorage.setItem("settings", JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const saved = JSON.parse(localStorage.getItem("settings") || "{}");
+  if (saved.font) fontSelect.value = saved.font;
+  if (saved.textColor) textColorInput.value = saved.textColor;
+  if (saved.bgColor) bgColorInput.value = saved.bgColor;
+  if (saved.bgStyle) bgStyleSelect.value = saved.bgStyle;
+  if (saved.mode) modeSelect.value = saved.mode;
+  applySettings();
+}
+
+[fontSelect, textColorInput, bgColorInput, bgStyleSelect, modeSelect].forEach(el => {
+  el.addEventListener("input", applySettings);
 });
 
-function applyFontSize(size) {
-  document.body.classList.remove("small-font", "medium-font", "large-font");
-  document.body.classList.add(`${size}-font`);
-  localStorage.setItem("fontSize", size);
-}
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+  });
+});
 
-function toggleSettings() {
-  const panel = document.getElementById("settingsPanel");
-  panel.style.display = panel.style.display === "block" ? "none" : "block";
-}
+renderGames(gamesList, "games-grid");
+renderGames(betasList, "betas-grid");
+renderFavoritesTab();
+loadSettings();
 </script>
 </body>
 </html>
