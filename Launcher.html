@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="Games/Images/Launcher.png" />
+<title>Edabeast Games</title>
+<style>
+  :root {
+    --bg-dark: #222;
+    --text-dark: #fff;
+    --card-dark: #333;
+    --header-dark: #333;
+
+    --bg-light: #f9f9f9;
+    --text-light: #111;
+    --card-light: #fff;
+    --header-light: #ddd;
+
+    --transition-speed: 0.3s;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    transition: background var(--transition-speed), color var(--transition-speed);
+  }
+
+  body.dark {
+    background: var(--bg-dark);
+    color: var(--text-dark);
+  }
+
+  body.light {
+    background: var(--bg-light);
+    color: var(--text-light);
+  }
+
+  header {
+    padding: 15px;
+    text-align: center;
+    font-size: 2em;
+    font-weight: bold;
+    transition: background var(--transition-speed), color var(--transition-speed);
+  }
+  body.dark header {
+    background: var(--header-dark);
+    color: var(--text-dark);
+  }
+  body.light header {
+    background: var(--header-light);
+    color: var(--text-light);
+  }
+
+  .tabs {
+    display: flex;
+    background: inherit;
+    padding: 10px;
+    gap: 10px;
+  }
+  .tab {
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background var(--transition-speed);
+  }
+  body.dark .tab {
+    background: #444;
+    color: white;
+  }
+  body.light .tab {
+    background: #eee;
+    color: black;
+  }
+  .tab.active {
+    background: #666;
+  }
+
+  .tab-content {
+    display: none;
+    padding: 20px;
+  }
+  .tab-content.active {
+    display: block;
+  }
+
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+  }
+  .game-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: transform 0.2s, background var(--transition-speed);
+  }
+  .game-card:hover {
+    transform: scale(1.03);
+  }
+  body.dark .game-card {
+    background: var(--card-dark);
+  }
+  body.light .game-card {
+    background: var(--card-light);
+  }
+
+  .game-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .game-image {
+    width: 100%;
+    height: 140px;
+    object-fit: contain;
+    display: block;
+    transition: background var(--transition-speed);
+  }
+  body.dark .game-image {
+    background: #111;
+  }
+  body.light .game-image {
+    background: #f0f0f0;
+  }
+
+  .game-info {
+    padding: 10px;
+  }
+  .game-title {
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+  .game-desc {
+    font-size: 0.9em;
+  }
+
+  .favorite-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .favorite-btn svg {
+    pointer-events: none;
+  }
+
+  #settings-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 100%;
+    background: inherit;
+    padding: 20px;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.4);
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: transform var(--transition-speed), opacity var(--transition-speed);
+    z-index: 1001;
+  }
+
+  #settings-sidebar.open {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  
+  body.dark #settings-sidebar {
+    background: var(--card-dark);
+    color: var(--text-dark);
+  }
+  body.light #settings-sidebar {
+    background: var(--card-light);
+    color: var(--text-light);
+  }
+
+  #overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 1000;
+  }
+  #overlay.active {
+    display: block;
+  }
+
+  #menu-btn {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: #666;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    z-index: 1100;
+  }
+</style>
+</head>
+<body class="dark">
+
+<button id="menu-btn">☰</button>
+
+<header>Edabeast Games</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="games">Games</div>
+  <div class="tab" data-tab="betas">Betas</div>
+  <div class="tab" data-tab="favorites">Favorites</div>
+</div>
+
+<div id="games" class="tab-content active">
+  <div class="game-grid" id="games-grid"></div>
+</div>
+<div id="betas" class="tab-content">
+  <div class="game-grid" id="betas-grid"></div>
+</div>
+<div id="favorites" class="tab-content">
+  <div class="game-grid" id="favorites-grid"><p>No favorites yet!</p></div>
+</div>
+
+<div id="settings-sidebar">
+  <h3>Settings</h3>
+  <div class="settings-option">
+    <label>Font: </label>
+    <select id="font-select">
+      <option value="Arial, sans-serif">Arial</option>
+      <option value="'Courier New', monospace">Courier New</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="Verdana, sans-serif">Verdana</option>
+    </select>
+  </div>
+  <div class="settings-option">
+    <label>Mode: </label>
+    <select id="mode-select">
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
+  </div>
+</div>
+<div id="overlay"></div>
+
+<script>
+const gamesList = [
+  { title: "Tetris", desc: "Arrange the blocks to clear lines.", img: "Games/Images/Tetris_menu.png", link: "Games/Tetris.html" },
+  { title: "Snake", desc: "Eat apples, grow longer, avoid yourself.", img: "Games/Images/Snake_menu.png", link: "Games/Snake.html" },
+  { title: "Tic-tac-toe", desc: "Classic Xs and Os battle.", img: "Games/Images/Tic-tac-toe_menu.png", link: "Games/Tic-tac-toe.html" },
+  { title: "Sudoku", desc: "Fill the grid with 1–9 without repeats.", img: "Games/Images/Sudoku_menu.png", link: "Games/Sudoku.html" },
+  { title: "Minesweeper", desc: "Avoid the mines, reveal safe spots.", img: "Games/Images/Minesweeper_menu.png", link: "Games/Minesweeper.html" },
+  { title: "Flappy Bird", desc: "Tap to fly, avoid pipes.", img: "Games/Images/Flappy_menu.png", link: "Games/Flappy.html" },
+  { title: "Pac-Man", desc: "Eat pellets, avoid ghosts.", img: "Games/Images/Pac_menu.png", link: "Games/Pac.html" }
+];
+const betasList = [
+  { title: "New York Trail", desc: "A journey through the city.", img: "Games/Images/nytrail.png", link: "Games/NewYorkTrail.html" }
+];
+let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+function filledHeartSVG() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="red" viewBox="0 0 24 24">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5
+    2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09
+    C13.09 3.81 14.76 3 16.5 3
+    19.58 3 22 5.42 22 8.5
+    c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>`;
+}
+function outlineHeartSVG() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="red" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M12.1 21.35l-1.1-1.05C5.14 15.24 2 12.39 2 8.5
+    2 5.42 4.42 3 7.5 3
+    c1.74 0 3.41.81 4.5 2.09
+    C13.09 3.81 14.76 3 16.5 3
+    19.58 3 22 5.42 22 8.5
+    c0 3.89-3.14 6.74-8.9 11.8l-1 1.05z"/>
+  </svg>`;
+}
+
+function renderGames(list, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = "";
+  list.forEach(game => {
+    const isFav = favorites.includes(game.title);
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.innerHTML = `
+      <button class="favorite-btn ${isFav ? "fav" : ""}" title="Toggle Favorite">
+        ${isFav ? filledHeartSVG() : outlineHeartSVG()}
+      </button>
+      <a href="${game.link}" target="_blank" class="game-link">
+        <img src="${game.img}" alt="${game.title}" class="game-image">
+        <div class="game-info">
+          <div class="game-title">${game.title}</div>
+          <div class="game-desc">${game.desc}</div>
+        </div>
+      </a>
+    `;
+    const favBtn = card.querySelector(".favorite-btn");
+    favBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleFavorite(game.title, favBtn);
+    });
+    container.appendChild(card);
+  });
+}
+
+function toggleFavorite(title, btn) {
+  const index = favorites.indexOf(title);
+  if (index === -1) {
+    favorites.push(title);
+    btn.innerHTML = filledHeartSVG();
+    btn.classList.add("fav");
+  } else {
+    favorites.splice(index, 1);
+    btn.innerHTML = outlineHeartSVG();
+    btn.classList.remove("fav");
+  }
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  renderFavoritesTab();
+}
+
+function renderFavoritesTab() {
+  const favGrid = document.getElementById("favorites-grid");
+  favGrid.innerHTML = "";
+  if (favorites.length === 0) {
+    favGrid.innerHTML = "<p>No favorites yet!</p>";
+    return;
+  }
+  const favGames = [...gamesList, ...betasList].filter(g => favorites.includes(g.title));
+  favGames.forEach(game => {
+    const card = document.createElement("div");
+    card.className = "game-card";
+    card.innerHTML = `
+      <button class="favorite-btn fav" title="Toggle Favorite">${filledHeartSVG()}</button>
+      <a href="${game.link}" target="_blank" class="game-link">
+        <img src="${game.img}" alt="${game.title}" class="game-image">
+        <div class="game-info">
+          <div class="game-title">${game.title}</div>
+          <div class="game-desc">${game.desc}</div>
+        </div>
+      </a>
+    `;
+    const favBtn = card.querySelector(".favorite-btn");
+    favBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleFavorite(game.title, favBtn);
+    });
+    favGrid.appendChild(card);
+  });
+}
+
+const fontSelect = document.getElementById("font-select");
+const modeSelect = document.getElementById("mode-select");
+
+function applySettings() {
+  document.body.style.fontFamily = fontSelect.value;
+
+  document.body.classList.remove("dark", "light");
+  document.body.classList.add(modeSelect.value);
+
+  saveSettings();
+}
+
+function saveSettings() {
+  const settings = {
+    font: fontSelect.value,
+    mode: modeSelect.value
+  };
+  localStorage.setItem("settings", JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const saved = JSON.parse(localStorage.getItem("settings") || "{}");
+  if (saved.font) fontSelect.value = saved.font;
+  if (saved.mode) modeSelect.value = saved.mode;
+  applySettings();
+}
+
+[fontSelect, modeSelect].forEach(el => {
+  el.addEventListener("input", applySettings);
+});
+
+const sidebar = document.getElementById("settings-sidebar");
+const overlay = document.getElementById("overlay");
+const menuBtn = document.getElementById("menu-btn");
+
+menuBtn.addEventListener("click", () => {
+  sidebar.classList.add("open");
+  overlay.classList.add("active");
+  menuBtn.style.display = "none";
+});
+overlay.addEventListener("click", () => {
+  sidebar.classList.remove("open");
+  overlay.classList.remove("active");
+  menuBtn.style.display = "block";
+});
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.tab).classList.add("active");
+  });
+});
+
+renderGames(gamesList, "games-grid");
+renderGames(betasList, "betas-grid");
+renderFavoritesTab();
+loadSettings();
+</script>
+</body>
+</html>
+
