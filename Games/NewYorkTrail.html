@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="Images/NewYorkTrail.png">
+  <title>New York Trail</title>
+  <style>
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background: #111;
+      color: #eee;
+      padding: 20px;
+      margin: 0;
+      font-size: 16px;
+    }
+    #game {
+      max-width: 700px;
+      margin: auto;
+      text-align: center;
+    }
+    button {
+      margin: 5px 0;
+      padding: 10px;
+      background: #333;
+      border: none;
+      color: #eee;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+    }
+    button:hover {
+      background: #555;
+    }
+    .stats {
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+    #carImage {
+      display: inline-block;
+      margin: 10px;
+      width: 300px;
+      height: auto;
+    }
+    #hospitalImage {
+      display: inline-block;
+      margin: 10px;
+      width: 300px;
+      height: auto;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game"></div>
+  <audio id="bg-music" src="Sounds/NewYorkTrail.mp3" loop></audio>
+  <script>
+    const gameDiv = document.getElementById('game');
+    const bgMusic = document.getElementById('bg-music');
+    let soundEnabled = false;
+    let state = {};
+    let lastEventIndex = -1;
+
+    const professions = {
+      "Banker": { money: 200, food: 200, health: 100, repairChance: 0.2 },
+      "Musician": { money: 150, food: 200, health: 100, repairChance: 0.4 },
+      "Mechanic": { money: 100, food: 200, health: 120, repairChance: 0.8 }
+    };
+
+    const stops = [
+      'Buffalo', 'Batavia', 'Rochester', 'Canandaigua', 'Geneva', 'Syracuse', 'Oneida',
+      'Utica', 'Herkimer', 'Schenectady', 'Albany', 'Hudson', 'Rhinebeck', 'Poughkeepsie',
+      'Peekskill', 'Yonkers', 'Bronx', 'New York City'
+    ];
+
+    function show(text, options = []) {
+      gameDiv.innerHTML = `<div class="stats">${showStats()}</div><img id="carImage" src="Images/Car1.png" alt="Car"> <p>${text}</p>`;
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt.text;
+        btn.onclick = () => {
+          if (typeof opt.action === 'function') opt.action();
+        };
+        gameDiv.appendChild(btn);
+      });
+      startCarAnimation();
+    }
+
+    function showStats() {
+      return `Day: ${state.day} | Food: ${state.food} | Money: $${state.money} | Health: ${Math.max(0, state.health)} | Gas: ${state.gas} | Location: ${stops[state.location]}`;
+    }
+
+    function chooseProfession() {
+      gameDiv.innerHTML = `<p>Choose your profession:</p>`;
+      Object.keys(professions).forEach(prof => {
+        const btn = document.createElement('button');
+        btn.textContent = prof;
+        btn.onclick = () => startGame(prof);
+        gameDiv.appendChild(btn);
+      });
+    }
+
+    function startGame(prof) {
+      const profData = professions[prof];
+      state = {
+        day: 1,
+        food: profData.food,
+        money: profData.money,
+        health: profData.health,
+        repairChance: profData.repairChance,
+        location: 0,
+        profession: prof,
+        parts: 2,
+        gas: 200
+      };
+      show(`You are a ${prof} starting your journey in Buffalo.`, [
+        { text: "Begin Journey", action: nextStop }
+      ]);
+    }
+
+    function nextStop() {
+      if (state.health <= 0) {
+        show("You have succumbed to your injuries and illness. Game over.", [
+          { text: "Try Again", action: chooseProfession }
+        ]);
+        return;
+      }
+
+      if (state.location >= stops.length - 1) {
+        show("You arrived in New York City safely! Congratulations!", [
+          { text: "Play Again", action: chooseProfession }
+        ]);
+        return;
+      }
+
+      state.day++;
+      state.food -= randomInt(10, 25);
+      if (state.food < 0) state.food = 0;
+      state.gas -= randomInt(5, 10);
+
+      if (state.food === 0) {
+        state.health -= 50;
+      }
+
+      if (state.health <= 0) {
+        show("You have succumbed to your injuries and illness. Game over.", [
+          { text: "Try Again", action: chooseProfession }
+        ]);
+        return;
+      }
+
+      if (state.gas <= 0) {
+        show("You're out of gas! Your journey ends here.", [
+          { text: "Try Again", action: chooseProfession }
+        ]);
+        return;
+      }
+
+      if (state.money < 0) state.money = 0;
+
+      let town = stops[state.location];
+      const events = [
+        () => show(`You reach ${town}. A local offers to sell you food.`, [
+          { text: "Buy food (-$50)", action: () => { state.food += 200; state.money -= 50; nextStop(); } },
+          { text: "Decline", action: nextStop }
+        ]),
+        () => show(`You find a gas station in ${town}.`, [
+          { text: "Buy gas (-$15)", action: () => { state.gas += 30; state.money -= 15; nextStop(); } },
+          { text: "Skip it", action: nextStop }
+        ]),
+        () => {
+          show(`In ${town}, your engine breaks down! Attempt to fix it or use a spare part.`, [
+            { text: "Try to fix it", action: tryRepair },
+            { text: "Use Spare Part", action: () => {
+              if (state.parts > 0) {
+                state.parts -= 1;
+                nextStop();
+              } else {
+                show("You have no spare parts!", [
+                  { text: "Continue", action: nextStop }
+                ]);
+              }
+            }},
+            { text: "Do nothing (-20 health)", action: () => { state.health -= 20; nextStop(); } }
+          ]);
+        },
+        () => show(`You reached a hospital! Get treated for your health issues.`, [
+          { text: "Visit the Hospital", action: visitHospital },
+          { text: "Continue on Journey", action: nextStop }
+        ]),
+        () => show(`You got sick! Lose 30 health.`, [
+          { text: "Continue", action: () => { state.health -= 30; nextStop(); } }
+        ]),
+        () => show(`You found a shortcut! Skip the next stop.`, [
+          { text: "Continue", action: () => { state.location++; nextStop(); } }
+        ]),
+        () => show(`A thief steals $20 from you at ${town}.`, [
+          { text: "Continue", action: () => { state.money = Math.max(0, state.money - 20); nextStop(); } }
+        ]),
+        () => show(`Your group enjoys a peaceful day. Nothing happens.`, [
+          { text: "Continue", action: nextStop }
+        ]),
+        () => show(`You helped a stranded traveler and received $15.`, [
+          { text: "Continue", action: () => { state.money += 15; nextStop(); } }
+        ]),
+        () => show(`Heavy rain slows you down.`, [
+          { text: "Continue", action: () => { state.day++; nextStop(); } }
+        ])
+      ];
+
+      let nextEventIndex;
+      do {
+        nextEventIndex = randomInt(0, events.length - 1);
+      } while (nextEventIndex === lastEventIndex);
+      lastEventIndex = nextEventIndex;
+
+      events[nextEventIndex]();
+      state.location++;
+    }
+
+    function tryRepair() {
+      const success = Math.random() < state.repairChance;
+      if (success) {
+        show("You successfully repaired the vehicle!", [
+          { text: "Continue", action: nextStop }
+        ]);
+      } else {
+        show("Repair failed. You lose 10 health.", [
+          { text: "Continue", action: () => { state.health -= 10; nextStop(); } }
+        ]);
+      }
+    }
+
+    function visitHospital() {
+      gameDiv.innerHTML = `<div class="stats">${showStats()}</div><img id="carImage" src="Images/Car1.png" alt="Car"> <img id="hospitalImage" src="Images/Hospital.png" alt="Hospital"><p>Your health is restored by 50 points (up to 100).<p>`;
+      state.health = Math.min(state.health + 50, 100);
+      setTimeout(nextStop, 2000);
+    }
+
+    function startCarAnimation() {
+      let carImage = document.getElementById("carImage");
+      setInterval(() => {
+        carImage.src = carImage.src.includes("Images/Car1.png") ? "Images/Car2.png" : (carImage.src.includes("Images/Car2.png") ? "Images/Car3.png" : "Images/Car1.png");
+      }, 100);
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function showStartupPrompt() {
+      gameDiv.innerHTML = `
+        <p style="font-size: 18px;">Welcome to <strong>New York Trail</strong></p>
+        <p>Click anywhere or press <strong>Space</strong> to begin with music.</p>
+      `;
+      document.body.addEventListener('keydown', handleKeyStart);
+    }
+
+    function handleKeyStart(e) {
+      if (e.code === 'Space') {
+        startWithSound();
+      }
+    }
+    
+    document.addEventListener('click', () => {
+        startWithSound();
+    });
+
+    function startWithSound() {
+      if (!soundEnabled) {
+        bgMusic.play().then(() => {
+          soundEnabled = true;
+          document.body.removeEventListener('click', startWithSound);
+          document.body.removeEventListener('keydown', handleKeyStart);
+          chooseProfession();
+        }).catch((err) => {
+          console.warn("Autoplay blocked:", err);
+          chooseProfession();
+        });
+      }
+    }
+
+    showStartupPrompt();
+  </script> 
+</body>
+</html>
+

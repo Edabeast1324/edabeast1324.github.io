@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pac-Man</title>
+<link rel="icon" type="image/png" href="Images/Pac.png"/>
+<style>
+  :root{
+    --bg:#000;
+    --wall:#203040;
+    --dot:#ffd27f;
+    --pellet:#fff;
+    --pac:#ffde00;
+    --ghost1:#ff6666;
+    --ghost2:#66ccff;
+    --ghost3:#ff66ff;
+    --ghost4:#99ff99;
+    --hud:#fff;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--hud)}
+  #wrapper{display:flex;flex-direction:column;align-items:center;gap:8px}
+  canvas{background:linear-gradient(#001,#001a);image-rendering:pixelated;border:8px solid #0b2140;border-radius:8px;display:block}
+  .hud{display:flex;gap:12px;align-items:center;justify-content:center}
+  button{background:#123; color:var(--hud); border:1px solid #345; padding:6px 10px;border-radius:6px;cursor:pointer}
+  small{opacity:.8}
+  @media (max-width:520px){ canvas{width:92vw;height:auto} }
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <canvas id="game" width="560" height="620"></canvas>
+  <div class="hud">
+    <div id="score">Score: 0</div>
+    <div id="lives">Lives: 3</div>
+    <button id="restart">Restart</button>
+    <small>Arrows / WASD to move • Eat all dots • Power pellet: ghosts vulnerable</small>
+  </div>
+</div>
+
+<script>
+const ORIGINAL = [
+  "11111111111111111111",
+  "10000000000000000001",
+  "10111101101101111101",
+  "10300001100000000301",
+  "10110111111110110101",
+  "10000000000000100101",
+  "11110101100110101101",
+  "00000101000010100001",
+  "11110101111110111101",
+  "10000000000000000001",
+  "10110111111110110101",
+  "10300100000100003001",
+  "10111101110101111101",
+  "10000000000000000001",
+  "11111111111111111111"
+];
+
+const BASE_MAP = ORIGINAL.map(row => row.split('').map(ch => ch === '1' ? 1 : (ch === '3' ? 3 : 2)));
+
+const TILE = 28;
+const ROWS = BASE_MAP.length;
+const COLS = BASE_MAP[0].length;
+const W = COLS * TILE;
+const H = ROWS * TILE;
+
+const canvas = document.getElementById('game');
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext('2d');
+
+let scoreEl = document.getElementById('score');
+let livesEl = document.getElementById('lives');
+document.getElementById('restart').addEventListener('click', init);
+
+const DIRS = {0:[0,0],1:[-1,0],2:[0,1],3:[1,0],4:[0,-1]};
+
+let state;
+
+function copyMap(m){ return m.map(r => r.slice()); }
+
+function init(){
+  state = {
+    base: BASE_MAP,
+    map: copyMap(BASE_MAP),
+    pac: { r:11, c:9, x:9*TILE + TILE/2, y:11*TILE + TILE/2, dir:0, queued:0 },
+    ghosts: [
+      { r:7, c:9, color:'#ff6666', dir:1, time:0, startR:7, startC:9 },
+      { r:7, c:10, color:'#66ccff', dir:-1, time:0, startR:7, startC:10 },
+      { r:7, c:8, color:'#ff66ff', dir:1, time:0, startR:7, startC:8 },
+      { r:7, c:11, color:'#99ff99', dir:-1, time:0, startR:7, startC:11 }
+    ],
+    powerMode: 0,
+    score: 0,
+    lives: 3,
+    running: true,
+    last: performance.now()
+  };
+  scoreEl.textContent = `Score: ${state.score}`;
+  livesEl.textContent = `Lives: ${state.lives}`;
+  requestAnimationFrame(loop);
+}
+init();
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if(e.key === ' '){ state.running = !state.running; if(state.running) state.last = performance.now(); }
+});
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function keyToDir(){
+  if(keys['arrowup']||keys['w']) return 1;
+  if(keys['arrowright']||keys['d']) return 2;
+  if(keys['arrowdown']||keys['s']) return 3;
+  if(keys['arrowleft']||keys['a']) return 4;
+  return 0;
+}
+
+function isWall(r,c,map){
+  if(r < 0 || c < 0 || r >= ROWS || c >= COLS) return true;
+  return map[r][c] === 1;
+}
+
+function opposite(d){ if(d===1) return 3; if(d===2) return 4; if(d===3) return 1; if(d===4) return 2; return 0; }
+
+function loop(now){
+  const dt = Math.min(0.05, (now - state.last) / 1000);
+  state.last = now;
+  if(state.running) update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function update(dt){
+  const desired = keyToDir();
+  if(desired) state.pac.queued = desired;
+
+  const pr = Math.floor(state.pac.y / TILE);
+  const pc = Math.floor(state.pac.x / TILE);
+  const centerX = (pc + 0.5) * TILE;
+  const centerY = (pr + 0.5) * TILE;
+
+  const centeredXDist = Math.abs(state.pac.x - centerX);
+  const centeredYDist = Math.abs(state.pac.y - centerY);
+  const turnThreshold = 8;
+
+  function canTurnTo(queuedDir){
+    if(!queuedDir) return false;
+    const [dqdr,dqdc] = DIRS[queuedDir];
+    const nr = pr + dqdr, nc = pc + dqdc;
+    if(isWall(nr,nc,state.map)) return false;
+
+    if(state.pac.dir === 0) {
+      return centeredXDist < 3 && centeredYDist < 3;
+    }
+    if(state.pac.dir === 1 || state.pac.dir === 3) {
+      return centeredXDist < turnThreshold;
+    }
+    if(state.pac.dir === 2 || state.pac.dir === 4) {
+      return centeredYDist < turnThreshold;
+    }
+    return false;
+  }
+
+  if(state.pac.queued && canTurnTo(state.pac.queued)) {
+    state.pac.dir = state.pac.queued;
+    if(state.pac.dir === 1 || state.pac.dir === 3) {
+      state.pac.x = centerX;
+    } else if(state.pac.dir === 2 || state.pac.dir === 4) {
+      state.pac.y = centerY;
+    }
+  }
+
+  const speed = 120 * dt;
+  if(state.pac.dir){
+    const [dr,dc] = DIRS[state.pac.dir];
+    const aheadR = Math.floor(state.pac.y / TILE) + dr;
+    const aheadC = Math.floor(state.pac.x / TILE) + dc;
+    let stop = false;
+    if(isWall(aheadR, aheadC, state.map)){
+      if(state.pac.dir === 1) stop = (state.pac.y - centerY) < speed;
+      else if(state.pac.dir === 3) stop = (centerY - state.pac.y) < speed;
+      else if(state.pac.dir === 2) stop = (centerX - state.pac.x) < speed;
+      else if(state.pac.dir === 4) stop = (state.pac.x - centerX) < speed;
+    }
+    if(stop){
+      state.pac.dir = 0;
+      state.pac.x = centerX;
+      state.pac.y = centerY;
+    } else {
+      state.pac.x += dc * speed;
+      state.pac.y += dr * speed;
+    }
+  }
+
+  if(state.pac.x < -TILE/2) state.pac.x = W + TILE/2;
+  if(state.pac.x > W + TILE/2) state.pac.x = -TILE/2;
+
+  if(centeredXDist < 5 && centeredYDist < 5){
+    const tmR = Math.floor(state.pac.y / TILE);
+    const tmC = Math.floor(state.pac.x / TILE);
+    const val = state.map[tmR][tmC];
+    if(val === 2){
+      state.map[tmR][tmC] = 0;
+      state.score += 10;
+      scoreEl.textContent = `Score: ${state.score}`;
+    } else if(val === 3){
+      state.map[tmR][tmC] = 0;
+      state.score += 50;
+      state.powerMode = 8.0;
+      scoreEl.textContent = `Score: ${state.score}`;
+    }
+  }
+
+  if(state.powerMode > 0) state.powerMode = Math.max(0, state.powerMode - dt);
+
+  const ghostSpeed = 110 * dt;
+
+  function ghostAtTile(r, c, self) {
+    return state.ghosts.find(g =>
+      g !== self &&
+      Math.abs((g.x ?? (g.c * TILE + TILE/2)) - ((c + 0.5) * TILE)) < 2 &&
+      Math.abs((g.y ?? (g.r * TILE + TILE/2)) - ((r + 0.5) * TILE)) < 2
+    );
+  }
+
+  for (let ghost of state.ghosts) {
+    if (ghost.x === undefined || ghost.y === undefined) {
+      ghost.x = ghost.c * TILE + TILE / 2;
+      ghost.y = ghost.r * TILE + TILE / 2;
+      ghost.dir = ghost.dir > 0 ? ghost.dir : 2;
+    }
+
+    let gr = Math.floor(ghost.y / TILE);
+    let gc = Math.floor(ghost.x / TILE);
+    let centerX = (gc + 0.5) * TILE;
+    let centerY = (gr + 0.5) * TILE;
+
+    if (Math.abs(ghost.x - centerX) < 0.5 && Math.abs(ghost.y - centerY) < 0.5) {
+      ghost.r = gr;
+      ghost.c = gc;
+      ghost.x = centerX;
+      ghost.y = centerY;
+
+      let possible = [];
+      for (let d = 1; d <= 4; d++) {
+        if (d === opposite(ghost.dir)) continue;
+        let [dr, dc] = DIRS[d];
+        let nr = gr + dr, nc = gc + dc;
+        if (!isWall(nr, nc, state.map) && !ghostAtTile(nr, nc, ghost)) possible.push(d);
+      }
+      if (possible.length === 0) {
+        for (let d = 1; d <= 4; d++) {
+          let [dr, dc] = DIRS[d];
+          let nr = gr + dr, nc = gc + dc;
+          if (!isWall(nr, nc, state.map) && !ghostAtTile(nr, nc, ghost)) possible.push(d);
+        }
+      }
+      if (possible.length === 0) {
+        for (let d = 1; d <= 4; d++) {
+          if (d === ghost.dir) continue;
+          let [dr, dc] = DIRS[d];
+          let nr = gr + dr, nc = gc + dc;
+          if (!isWall(nr, nc, state.map)) possible.push(d);
+        }
+      }
+      if (possible.length > 0) {
+        ghost.dir = possible[Math.floor(Math.random() * possible.length)];
+      } else {
+        ghost.dir = opposite(ghost.dir) || 2;
+      }
+    }
+
+    if (ghost.dir && ghost.dir !== 0) {
+      let [dr, dc] = DIRS[ghost.dir];
+      let nextX = ghost.x + dc * ghostSpeed;
+      let nextY = ghost.y + dr * ghostSpeed;
+      let nextTileR = Math.floor((nextY) / TILE);
+      let nextTileC = Math.floor((nextX) / TILE);
+
+      let other = ghostAtTile(nextTileR, nextTileC, ghost);
+      if (!isWall(nextTileR, nextTileC, state.map)) {
+        if (other) {
+          let prevDir = ghost.dir;
+          ghost.dir = opposite(ghost.dir);
+          let otherCenterX = (other.c + 0.5) * TILE;
+          let otherCenterY = (other.r + 0.5) * TILE;
+          if (Math.abs(other.x - otherCenterX) < 0.5 && Math.abs(other.y - otherCenterY) < 0.5) {
+            other.dir = opposite(other.dir);
+          }
+          ghost.x += DIRS[ghost.dir][1] * ghostSpeed;
+          ghost.y += DIRS[ghost.dir][0] * ghostSpeed;
+        } else {
+          ghost.x = nextX;
+          ghost.y = nextY;
+        }
+      } else {
+        ghost.x = centerX;
+        ghost.y = centerY;
+        ghost.dir = 0;
+      }
+    }
+
+    if (ghost.x < -TILE / 2) {
+      ghost.x = W + TILE / 2;
+      ghost.c = COLS - 1;
+    }
+    if (ghost.x > W + TILE / 2) {
+      ghost.x = -TILE / 2;
+      ghost.c = 0;
+    }
+  }
+
+  for (let ghost of state.ghosts) {
+    if (ghost.eaten) {
+      ghost.respawn -= dt;
+      if (ghost.respawn <= 0) {
+        ghost.r = ghost.startR;
+        ghost.c = ghost.startC;
+        ghost.x = ghost.c * TILE + TILE / 2;
+        ghost.y = ghost.r * TILE + TILE / 2;
+        ghost.dir = [1,2,3,4][Math.floor(Math.random()*4)];
+        ghost.eaten = false;
+      }
+      continue;
+    }
+
+    const dx = (ghost.x ?? (ghost.c * TILE + TILE/2)) - state.pac.x;
+    const dy = (ghost.y ?? (ghost.r * TILE + TILE/2)) - state.pac.y;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) {
+      if (state.powerMode > 0) {
+        state.score += 100;
+        scoreEl.textContent = `Score: ${state.score}`;
+        ghost.eaten = true;
+        ghost.respawn = 10.0;
+        ghost.x = -1000;
+        ghost.y = -1000;
+      } else {
+        state.lives--;
+        livesEl.textContent = `Lives: ${state.lives}`;
+        if (state.lives <= 0) {
+          state.running = false;
+          return;
+        }
+        state.pac.r = 11;
+        state.pac.c = 9;
+        state.pac.x = 9 * TILE + TILE / 2;
+        state.pac.y = 11 * TILE + TILE / 2;
+        state.pac.dir = 0;
+        state.pac.queued = 0;
+        for (let g of state.ghosts) {
+          g.r = g.startR;
+          g.c = g.startC;
+          g.x = g.c * TILE + TILE / 2;
+          g.y = g.r * TILE + TILE / 2;
+          g.dir = [1,2,3,4][Math.floor(Math.random()*4)];
+          g.eaten = false;
+        }
+        state.running = false;
+        setTimeout(() => { state.running = true; state.last = performance.now(); }, 1200);
+        return;
+      }
+    }
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const x = c*TILE, y = r*TILE;
+      if(state.map[r][c] === 1){
+        roundRect(ctx, x+1, y+1, TILE-2, TILE-2, 4);
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wall').trim();
+        ctx.fill();
+      } else if(state.map[r][c] === 2){
+        ctx.beginPath();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--dot').trim();
+        ctx.arc(x + TILE/2, y + TILE/2, Math.max(1, TILE*0.08), 0, Math.PI*2);
+        ctx.fill();
+      } else if(state.map[r][c] === 3){
+        ctx.beginPath();
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--pellet').trim();
+        ctx.arc(x + TILE/2, y + TILE/2, Math.max(2, TILE*0.18), 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  const px = state.pac.x, py = state.pac.y;
+  const mouthOpen = 0.25 + 0.15 * Math.sin(performance.now() / 120);
+  const dir = state.pac.dir || state.pac.queued || 2;
+  let ang = 0;
+  if(dir===1) ang = -Math.PI/2;
+  if(dir===2) ang = 0;
+  if(dir===3) ang = Math.PI/2;
+  if(dir===4) ang = Math.PI;
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--pac').trim();
+  ctx.beginPath();
+  ctx.moveTo(px,py);
+  ctx.arc(px,py, TILE*0.45, ang + mouthOpen*Math.PI, ang - mouthOpen*Math.PI, false);
+  ctx.fill();
+
+  for(let g of state.ghosts){
+    if (g.eaten) continue;
+    const gx = (g.x !== undefined ? g.x : g.c * TILE + TILE/2);
+    const gy = (g.y !== undefined ? g.y : g.r * TILE + TILE/2);
+    ctx.save();
+    ctx.translate(gx,gy);
+    ctx.beginPath();
+    ctx.arc(0, -TILE*0.1, TILE*0.38, Math.PI, 0, false);
+    ctx.rect(-TILE*0.38, -TILE*0.1, TILE*0.76, TILE*0.46);
+    ctx.fillStyle = state.powerMode>0 ? '#99aaff' : g.color;
+    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(-TILE*0.12, -TILE*0.02, TILE*0.08, TILE*0.12, 0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(TILE*0.12, -TILE*0.02, TILE*0.08, TILE*0.12, 0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(-TILE*0.12, -TILE*0.02, TILE*0.035, 0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(TILE*0.12, -TILE*0.02, TILE*0.035, 0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  if(!state.running){
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(W*0.12,H*0.4,W*0.76,H*0.18);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${Math.floor(TILE*0.9)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(state.lives <= 0 ? 'GAME OVER' : 'PAUSED', W/2, H*0.5 + TILE*0.3);
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+}
+</script>
+</body>
+</html>
+
+

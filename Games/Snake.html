@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake</title>
+  <link rel="icon" type="image/png" href="Images/Snake.png" />
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #121212;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      position: relative;
+      user-select: none;
+    }
+    canvas {
+      background: #1e1e1e;
+      border: 2px solid #5c8aff;
+      border-radius: 8px;
+      display: block;
+      cursor: pointer;
+    }
+    .controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    .controls button {
+      background: #5c8aff;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .controls button:hover {
+      background: #3a6be0;
+    }
+    .popup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      display: none;
+      z-index: 10;
+      width: 280px;
+    }
+    .popup h2 {
+      font-size: 2em;
+      margin-bottom: 20px;
+      color: #5c8aff;
+    }
+    .popup p {
+      font-size: 1.5em;
+    }
+    .popup button {
+      background: #5c8aff;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 20px;
+      font-size: 1.2em;
+    }
+    .popup button:hover {
+      background: #3a6be0;
+    }
+    .score-box {
+      position: absolute;
+      top: 15%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid #5c8aff;
+      border-radius: 5px;
+      padding: 8px 20px;
+      font-size: 1.2em;
+      color: #fff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button onclick="resetGame()">Reset</button>
+  </div>
+  <div class="score-box" id="score">Score: 0</div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="popup" class="popup">
+    <h2>Game Over</h2>
+    <p>Your Score: <span id="final-score">0</span></p>
+    <button onclick="resetGame()">Play Again</button>
+  </div>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const segmentSize = 10;
+    const gridWidth = canvas.width / segmentSize;
+    const gridHeight = canvas.height / segmentSize;
+    const speed = 75;
+    let direction = { x: 1, y: 0 };
+    let nextDirection = { x: 1, y: 0 };
+    let snake = [];
+    let food = null;
+    let score = 0;
+    let gameOver = false;
+    let lastMoveTime = 0;
+    let gameStarted = false;
+    const backgroundSound = new Audio("Sounds/snake.mp3");
+    backgroundSound.loop = true;
+    backgroundSound.volume = 0.3;
+    const popup = document.getElementById("popup");
+
+    function startGame() {
+      if (!gameStarted && !gameOver) {
+        gameStarted = true;
+        backgroundSound.play().catch(() => {});
+        lastMoveTime = 0;
+        requestAnimationFrame(gameLoop);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (!gameStarted) {
+        startGame();
+      }
+      if ((e.key === "ArrowUp" || e.key === "w") && direction.y !== 1) nextDirection = { x: 0, y: -1 };
+      if ((e.key === "ArrowDown" || e.key === "s") && direction.y !== -1) nextDirection = { x: 0, y: 1 };
+      if ((e.key === "ArrowLeft" || e.key === "a") && direction.x !== 1) nextDirection = { x: -1, y: 0 };
+      if ((e.key === "ArrowRight" || e.key === "d") && direction.x !== -1) nextDirection = { x: 1, y: 0 };
+    });
+
+    canvas.addEventListener("click", () => {
+      startGame();
+    });
+
+    function spawnFood() {
+      let x, y, collision;
+      do {
+        x = Math.floor(Math.random() * gridWidth);
+        y = Math.floor(Math.random() * gridHeight);
+        collision = snake.some(segment => segment.x === x && segment.y === y);
+      } while (collision);
+      return { x, y };
+    }
+
+    function resetGame() {
+      direction = { x: 1, y: 0 };
+      nextDirection = { x: 1, y: 0 };
+      score = 0;
+      gameOver = false;
+      gameStarted = false;
+      document.getElementById("score").textContent = "Score: 0";
+      popup.style.display = "none";
+      backgroundSound.pause();
+      backgroundSound.currentTime = 0;
+      const startX = Math.floor(gridWidth / 2);
+      const startY = Math.floor(gridHeight / 2);
+      snake = [];
+      for (let i = 0; i < 10; i++) {
+        snake.push({ x: startX - i, y: startY });
+      }
+      food = spawnFood();
+      lastMoveTime = 0;
+      draw();
+    }
+
+    function moveSnake() {
+      direction = nextDirection;
+      const head = snake[0];
+      const newHead = { x: head.x + direction.x, y: head.y + direction.y };
+      if (
+        newHead.x < 0 ||
+        newHead.x >= gridWidth ||
+        newHead.y < 0 ||
+        newHead.y >= gridHeight
+      ) {
+        endGame();
+        return;
+      }
+      if (snake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
+        endGame();
+        return;
+      }
+      snake.unshift(newHead);
+      if (newHead.x === food.x && newHead.y === food.y) {
+        score++;
+        document.getElementById("score").textContent = `Score: ${score}`;
+        food = spawnFood();
+      } else {
+        snake.pop();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ff5c5c";
+      ctx.fillRect(food.x * segmentSize, food.y * segmentSize, segmentSize, segmentSize);
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#5c8aff" : "#88b0ff";
+        ctx.fillRect(snake[i].x * segmentSize, snake[i].y * segmentSize, segmentSize, segmentSize);
+      }
+    }
+
+    function endGame() {
+      gameOver = true;
+      popup.style.display = "block";
+      document.getElementById("final-score").textContent = score;
+      backgroundSound.pause();
+    }
+
+    function gameLoop(timestamp) {
+      if (gameOver || !gameStarted) return;
+      if (!lastMoveTime) lastMoveTime = timestamp;
+      if (timestamp - lastMoveTime > speed) {
+        moveSnake();
+        draw();
+        lastMoveTime = timestamp;
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    resetGame();
+  </script>
+</body>
+</html>
+

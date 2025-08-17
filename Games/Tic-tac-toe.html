@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic-Tac-Toe</title>
+  <link rel="icon" type="image/png" href="Images/Tic-tac-toe.png">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Poppins', 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1d2b64, #f8cdda);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 30px 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+    .menu, .bot-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .menu button, .bot-menu button, #reset-btn {
+      padding: 12px 20px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.2);
+      color: #ffffff;
+      backdrop-filter: blur(5px);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .menu button:hover, .bot-menu button:hover, #reset-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateY(-2px);
+    }
+    #status {
+      margin: 15px 0;
+      font-size: 22px;
+      color: #ffffff;
+      font-weight: bold;
+      text-shadow: 0 0 5px #ffffff80;
+      min-height: 1.5em;
+    }
+    #game-board {
+      display: none;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .cell {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      font-size: 40px;
+      font-weight: bold;
+      color: #ffffff;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      backdrop-filter: blur(3px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.05);
+    }
+    .cell:active {
+      transform: scale(0.95);
+    }
+    .winning-cell {
+      text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00;
+    }
+    #reset-btn {
+      display: none;
+      margin-top: 10px;
+    }
+
+    #start-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      text-align: center;
+      z-index: 9999;
+    }
+
+
+    .overlay-content {
+      max-width: 90%;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="start-overlay">
+    <p>🎵 Click or Press <strong>Space</strong> to Start</p>
+    </div>
+
+  <div class="container">
+    <div id="start-menu" class="menu">
+      <button id="multiplayer-btn">Play Multiplayer</button>
+      <button id="bot-btn">Play with Bot</button>
+    </div>
+
+    <div id="bot-selection" class="bot-menu" style="display: none;">
+      <button id="easy-btn">Easy Bot</button>
+      <button id="impossible-btn">Impossible Bot</button>
+    </div>
+
+    <div id="status">Choose a mode to start</div>
+    <div id="game-board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+    <button id="reset-btn">Reset Game</button>
+  </div>
+
+  <audio id="bgMusic" src="Sounds/Tic.mp3" loop></audio>
+
+  <script>
+    const cells = document.querySelectorAll('.cell');
+    const statusDiv = document.getElementById('status');
+    const resetBtn = document.getElementById('reset-btn');
+    const startMenu = document.getElementById('start-menu');
+    const botSelectionMenu = document.getElementById('bot-selection');
+    const multiplayerBtn = document.getElementById('multiplayer-btn');
+    const botBtn = document.getElementById('bot-btn');
+    const easyBtn = document.getElementById('easy-btn');
+    const impossibleBtn = document.getElementById('impossible-btn');
+    const gameBoard = document.getElementById('game-board');
+
+    const winningCombinations = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+
+    let board, currentPlayer, gameOver, gameMode, botDifficulty;
+
+    function init() {
+      board = Array(9).fill('');
+      currentPlayer = 'X';
+      gameOver = false;
+      cells.forEach(c => {
+        c.textContent = '';
+        c.classList.remove('winning-cell');
+      });
+      statusDiv.textContent = `Player ${currentPlayer}'s turn`;
+      startMenu.style.display = 'none';
+      botSelectionMenu.style.display = 'none';
+      gameBoard.style.display = 'grid';
+      resetBtn.style.display = 'inline-block';
+    }
+
+    function resetGame() {
+      init();
+    }
+
+    function checkWinner(b, player) {
+      return winningCombinations.find(combo =>
+        combo.every(i => b[i] === player)
+      );
+    }
+
+    function isTie() {
+      return board.every(cell => cell !== '');
+    }
+
+    function makeMove(idx) {
+      if (board[idx] !== '' || gameOver) return;
+      board[idx] = currentPlayer;
+      cells[idx].textContent = currentPlayer;
+
+      const winCombo = checkWinner(board, currentPlayer);
+      if (winCombo) {
+        winCombo.forEach(i => cells[i].classList.add('winning-cell'));
+        statusDiv.textContent = (gameMode === 'bot' && currentPlayer === 'O') ? "Bot wins!" : `Player ${currentPlayer} wins!`;
+        gameOver = true;
+        return;
+      }
+      if (isTie()) {
+        statusDiv.textContent = "It's a tie!";
+        gameOver = true;
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      if (gameMode === 'bot' && currentPlayer === 'O') {
+        statusDiv.textContent = "Bot is thinking...";
+        setTimeout(botMove, 300);
+      } else {
+        statusDiv.textContent = `Player ${currentPlayer}'s turn`;
+      }
+    }
+
+    function botMove() {
+      if (botDifficulty === 'easy') {
+        easyBotMove();
+      } else {
+        const best = minimax(board.slice(), 'O');
+        makeMove(best.index);
+      }
+    }
+
+    function easyBotMove() {
+      const empty = board.map((v,i) => v === '' ? i : null).filter(i => i !== null);
+      const move = empty[Math.floor(Math.random() * empty.length)];
+      makeMove(move);
+    }
+
+    function minimax(newBoard, player) {
+      const avail = newBoard.map((v,i) => v === '' ? i : null).filter(i => i !== null);
+      if (checkWinner(newBoard, 'X')) return { score: -10 };
+      if (checkWinner(newBoard, 'O')) return { score: 10 };
+      if (avail.length === 0) return { score: 0 };
+
+      const moves = [];
+      for (let i of avail) {
+        const move = { index: i };
+        newBoard[i] = player;
+        const result = minimax(newBoard, player === 'O' ? 'X' : 'O');
+        move.score = result.score;
+        newBoard[i] = '';
+        moves.push(move);
+      }
+
+      let bestMove;
+      if (player === 'O') {
+        let bestScore = -Infinity;
+        for (const m of moves) {
+          if (m.score > bestScore) {
+            bestScore = m.score;
+            bestMove = m;
+          }
+        }
+      } else {
+        let bestScore = Infinity;
+        for (const m of moves) {
+          if (m.score < bestScore) {
+            bestScore = m.score;
+            bestMove = m;
+          }
+        }
+      }
+      return bestMove;
+    }
+
+
+    const bgMusic = document.getElementById('bgMusic');
+    const startOverlay = document.getElementById('start-overlay');
+    let musicStarted = false;
+
+    function startGameWithMusic() {
+      if (musicStarted) return;
+        bgMusic.play().catch(() => {});
+        startOverlay.style.display = 'none';
+        musicStarted = true;
+      }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        startGameWithMusic();
+      }
+    });
+
+    startOverlay.addEventListener('click', () => {
+      startGameWithMusic();
+    });
+
+    cells.forEach(cell => {
+      cell.addEventListener('click', () => makeMove(+cell.dataset.index));
+    });
+    resetBtn.addEventListener('click', resetGame);
+    multiplayerBtn.addEventListener('click', () => {
+      gameMode = 'multiplayer';
+      init();
+    });
+    botBtn.addEventListener('click', () => {
+      startMenu.style.display = 'none';
+      botSelectionMenu.style.display = 'flex';
+    });
+    easyBtn.addEventListener('click', () => {
+      gameMode = 'bot';
+      botDifficulty = 'easy';
+      init();
+    });
+    impossibleBtn.addEventListener('click', () => {
+      gameMode = 'bot';
+      botDifficulty = 'impossible';
+      init();
+    });
+  </script>
+</body>
+</html>
+
