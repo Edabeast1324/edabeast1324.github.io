@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NES Emulator</title>
+  <style>
+    :root{--bg:#0f1724;--card:#111827;--muted:#94a3b8;--accent:#60a5fa}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,system-ui,Arial;background:linear-gradient(180deg,#041024 0%, #071229 100%);color:#e6eef8}
+    .wrap{max-width:1100px;margin:28px auto;padding:20px}
+    header{display:flex;gap:16px;align-items:center}
+    h1{margin:0;font-size:20px}
+    .top-controls{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+    .card{background:rgba(255,255,255,0.03);padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    #screen{background:#000;display:block;border-radius:6px;image-rendering:pixelated;outline:none}
+    .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    button,input[type=range]{padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.05);color:inherit;cursor:pointer}
+    label{color:var(--muted);font-size:13px}
+    #errors{white-space:pre-wrap;margin-top:14px;color:#ffdede;background:rgba(255,0,0,0.06);padding:10px;border-radius:8px;max-height:220px;overflow:auto}
+    .dropzone{border:2px dashed rgba(255,255,255,0.08);padding:18px;border-radius:10px;text-align:center;color:var(--muted)}
+    .status{font-size:13px;color:var(--muted)}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .bad{color:#ffb4b4}
+    .good{color:#9ae6b4}
+    .kbd{padding:2px 6px;border-radius:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.08)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>NES in a Single File — open a .nes ROM and play</h1>
+        <div class="status">Controls: <span class="kbd">↑↓←→</span> = D-Pad · <span class="kbd">Z</span>=A · <span class="kbd">X</span>=B · <span class="kbd">Enter</span>=Start · <span class="kbd">Shift</span>=Select. Click the canvas to focus.</div>
+      </div>
+    </header>
+
+    <div class="top-controls" style="margin-top:18px">
+      <div class="card" style="flex:0 0 auto;min-width:260px;max-width:320px;">
+        <input id="romfile" type="file" accept=".nes" />
+        <div style="height:10px"></div>
+        <div class="dropzone" id="dropzone">Or drag & drop a .nes file here</div>
+        <div style="height:10px"></div>
+        <button id="btnSelfTest" title="Runs quick unit tests on the loader & helpers">Run Self‑Test</button>
+      </div>
+
+      <div class="card" style="flex:1 1 auto;min-width:360px;">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div>
+            <canvas id="screen" width="256" height="240" style="width:512px;height:480px" aria-label="NES screen" role="img"></canvas>
+          </div>
+          <div style="min-width:260px;flex:1 1 auto;max-width:420px">
+            <div class="controls">
+              <button id="btnStart">Start</button>
+              <button id="btnStop">Stop</button>
+              <button id="btnReset">Reset</button>
+              <label>Scale <input id="scale" type="range" min="1" max="4" value="2"></label>
+            </div>
+            <div style="height:12px"></div>
+            <div class="controls"><label>Audio <input id="audioToggle" type="checkbox" checked></label>
+              <label style="margin-left:6px">Volume <input id="volume" type="range" min="0" max="1" step="0.01" value="0.7"></label>
+            </div>
+            <div style="height:12px"></div>
+            <div><label>FPS: <span id="fps">0</span></label></div>
+            <div style="height:10px"></div>
+            <div id="errors" aria-live="polite">No errors.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="nes.min.js"></script>
+  <script>
+    (function(){
+      const $ = id => document.getElementById(id);
+      const romFile = $('romfile');
+      const dropzone = $('dropzone');
+      const canvas = $('screen');
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.getImageData(0,0,256,240);
+      const btnStart = $('btnStart');
+      const btnStop = $('btnStop');
+      const btnReset = $('btnReset');
+      const scaleInput = $('scale');
+      const errorsDiv = $('errors');
+      const fpsSpan = $('fps');
+      const audioToggle = $('audioToggle');
+      const volumeInput = $('volume');
+      const btnSelfTest = $('btnSelfTest');
+
+      let nes = null;
+      let frameBuffer = new Uint32Array(256 * 240);
+      let running = false;
+      let frames = 0;
+      let fpsTimer = performance.now();
+
+      function logError(err){
+        console.error(err);
+        const msg = (typeof err === 'string') ? err : (err && err.stack) ? err.stack : JSON.stringify(err);
+        errorsDiv.textContent = msg;
+      }
+      function logInfo(msg){
+        errorsDiv.textContent = msg;
+      }
+      function clearErrors(){ errorsDiv.textContent = 'No errors.' }
+
+      function requireJsnes(){
+        if(!window.jsnes || !window.jsnes.NES){
+          throw new Error('Emulator failed to load.');
+        }
+      }
+
+      function setScale(s){
+        canvas.style.width = (256 * s) + 'px';
+        canvas.style.height = (240 * s) + 'px';
+      }
+      setScale(parseInt(scaleInput.value,10));
+      scaleInput.addEventListener('input', ()=> setScale(parseInt(scaleInput.value,10)));
+
+      let audioCtx = null;
+      let scriptNode = null;
+      const audioL = [];
+      const audioR = [];
+      function initAudio(){
+        try{
+          if(audioCtx) return;
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioCtx = new AC();
+          scriptNode = audioCtx.createScriptProcessor(1024, 0, 2);
+          scriptNode.onaudioprocess = e => {
+            const outL = e.outputBuffer.getChannelData(0);
+            const outR = e.outputBuffer.getChannelData(1);
+            const vol = parseFloat(volumeInput.value);
+            for(let i=0;i<outL.length;i++){
+              if(audioL.length){ outL[i] = (audioL.shift()||0) * vol; outR[i] = (audioR.shift()||0) * vol; }
+              else { outL[i]=0; outR[i]=0; }
+            }
+          };
+          scriptNode.connect(audioCtx.destination);
+        }catch(err){ logError('Audio init failed: '+err); }
+      }
+
+      function bytesToBinaryString(buf){
+        const bytes = new Uint8Array(buf);
+        if(bytes.length < 16 || bytes[0]!==0x4E || bytes[1]!==0x45 || bytes[2]!==0x53 || bytes[3]!==0x1A){
+          throw new Error('Invalid iNES header. This does not look like a .nes file.');
+        }
+        const CHUNK = 0x8000;
+        let out = '';
+        for(let i=0;i<bytes.length;i+=CHUNK){
+          const sub = bytes.subarray(i, i+CHUNK);
+          out += String.fromCharCode.apply(null, sub);
+        }
+        return out;
+      }
+
+      function createNES(){
+        try{
+          requireJsnes();
+          initAudio();
+          nes = new jsnes.NES({
+            onFrame: function(frameBuffer32){
+              const buf32 = new Uint32Array(imgData.data.buffer);
+              for(let i=0;i<frameBuffer32.length;i++){
+                buf32[i] = (frameBuffer32[i] | 0xFF000000) >>> 0;
+              }
+              ctx.putImageData(imgData,0,0);
+              frames++;
+              const now = performance.now();
+              if(now - fpsTimer > 1000){ fpsSpan.textContent = String(frames); frames = 0; fpsTimer = now; }
+            },
+            onAudioSample: function(l, r){
+              if(!audioToggle.checked) return;
+              audioL.push(l); audioR.push(r);
+              const cap = 44100;
+              if(audioL.length > cap){ audioL.splice(0, audioL.length - cap); audioR.splice(0, audioR.length - cap); }
+            },
+            onStatusUpdate: function(){}
+          });
+        }catch(err){ logError('Failed to create NES: '+err); }
+      }
+
+      function startLoop(){
+        function frame(){
+          try{
+            if(running && nes){ nes.frame(); }
+          }catch(err){ logError(err); }
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+
+      const KEY_TO_BUTTON = {
+        'ArrowUp': () => jsnes.Controller.BUTTON_UP,
+        'ArrowDown': () => jsnes.Controller.BUTTON_DOWN,
+        'ArrowLeft': () => jsnes.Controller.BUTTON_LEFT,
+        'ArrowRight': () => jsnes.Controller.BUTTON_RIGHT,
+        'z': () => jsnes.Controller.BUTTON_A,
+        'Z': () => jsnes.Controller.BUTTON_A,
+        'x': () => jsnes.Controller.BUTTON_B,
+        'X': () => jsnes.Controller.BUTTON_B,
+        'Enter': () => jsnes.Controller.BUTTON_START,
+        'Shift': () => jsnes.Controller.BUTTON_SELECT
+      };
+      window.addEventListener('keydown', e => {
+        if(!nes) return;
+        if(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+        const fn = KEY_TO_BUTTON[e.key];
+        if(fn){ e.preventDefault(); try{ nes.buttonDown(1, fn()); }catch(_){} }
+      });
+      window.addEventListener('keyup', e => {
+        if(!nes) return;
+        const fn = KEY_TO_BUTTON[e.key];
+        if(fn){ e.preventDefault(); try{ nes.buttonUp(1, fn()); }catch(_){} }
+      });
+
+      function loadROMArrayBuffer(arrayBuffer){
+        try{
+          clearErrors();
+          if(!nes) createNES();
+          const binary = bytesToBinaryString(arrayBuffer);
+          nes.loadROM(binary);
+          running = true;
+          startLoop();
+          if(audioToggle.checked){ try{ if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }catch(_){} }
+          logInfo('ROM loaded. Enjoy!');
+        }catch(err){ logError('Load ROM failed: '+err); }
+      }
+
+      romFile.addEventListener('change', e => {
+        const f = e.target.files[0]; if(!f) return;
+        if(!/\.nes$/i.test(f.name)){ logError('Selected file is not .nes'); return; }
+        const reader = new FileReader();
+        reader.onload = ev => { try{ loadROMArrayBuffer(ev.target.result); }catch(err){ logError(err); } };
+        reader.onerror = () => logError('File read error');
+        reader.readAsArrayBuffer(f);
+      });
+
+      dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = '#60a5fa'; });
+      dropzone.addEventListener('dragleave', e => { e.preventDefault(); dropzone.style.borderColor = ''; });
+      dropzone.addEventListener('drop', e => {
+        e.preventDefault(); dropzone.style.borderColor = '';
+        const f = e.dataTransfer.files[0]; if(!f) return;
+        if(!/\.nes$/i.test(f.name)){ logError('Dropped file is not .nes'); return; }
+        const reader = new FileReader();
+        reader.onload = ev => loadROMArrayBuffer(ev.target.result);
+        reader.onerror = () => logError('File read error');
+        reader.readAsArrayBuffer(f);
+      });
+
+      btnStart.addEventListener('click', ()=>{ if(!nes) createNES(); running = true; startLoop(); try{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }catch(_){} });
+      btnStop.addEventListener('click', ()=>{ running = false; });
+      btnReset.addEventListener('click', ()=>{ try{ if(nes) nes.reset(); }catch(e){ logError(e); } });
+
+      window.addEventListener('error', function(ev){ logError(ev.error || ev.message || ev); });
+      window.addEventListener('unhandledrejection', function(ev){ logError(ev.reason || ev); });
+
+      canvas.addEventListener('click', ()=> canvas.focus());
+      canvas.tabIndex = 0;
+
+      try{ createNES(); }catch(err){ logError(err); }
+
+      function runSelfTests(){
+        const results = [];
+        function pass(name){ results.push('✔ '+name); }
+        function fail(name, err){ results.push('✘ '+name+'\n    '+err); }
+        try{
+          const bad = new Uint8Array([0,1,2,3,4,5]).buffer; bytesToBinaryString(bad); fail('Reject invalid iNES header', 'did not throw');
+        }catch(_){ pass('Reject invalid iNES header'); }
+        try{
+          const mock = new Uint8Array(32);
+          mock[0]=0x4E; mock[1]=0x45; mock[2]=0x53; mock[3]=0x1A;
+          const s = bytesToBinaryString(mock.buffer);
+          if(typeof s === 'string' && s.indexOf('NES')===0) pass('Convert buffer to binary string'); else fail('Convert buffer to binary string','unexpected output');
+        }catch(e){ fail('Convert buffer to binary string', e); }
+        try{
+          ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','z','Z','x','X','Enter','Shift'].forEach(k=>{ if(!KEY_TO_BUTTON[k]) throw new Error('key missing '+k); });
+          pass('Keyboard mapping includes required keys');
+        }catch(e){ fail('Keyboard mapping includes required keys', e); }
+        errorsDiv.textContent = results.join('\n');
+      }
+      btnSelfTest.addEventListener('click', runSelfTests);
+
+    })();
+  </script>
+</body>
+</html>
